@@ -49,6 +49,19 @@ label.s output{min-width:42px;text-align:right;color:var(--ink);font-variant-num
 .cota{font-size:10px;color:#0b4a8f;background:rgba(255,255,255,.88);padding:0 3px;border-radius:3px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .cota.w{color:#8a3512}
 #err{position:absolute;left:12px;bottom:12px;color:#a31d1d;background:#fff;border:1px solid #e4b5b5;border-radius:8px;padding:8px 10px;display:none;max-width:60ch}
+
+.panel,#scalebar,#pad{z-index:20}
+#css2d{z-index:1}
+.tg{position:absolute;top:8px;right:8px;width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer;font-size:14px;line-height:1;padding:0}
+#ui{max-height:calc(100% - 24px);overflow:auto}
+#ui h1,#ui .sub,#info h2{padding-right:34px}
+#ui.min .sub{display:none}
+@media (max-width:700px){
+  #ui{width:calc(100vw - 24px);max-height:62vh}
+  #info{top:auto;bottom:12px;left:12px;right:12px;width:auto;max-height:45vh}
+  #scalebar{bottom:72px}
+  body.walking #info{display:none}
+}
 </style>
 </head>
 <body>
@@ -801,7 +814,7 @@ const EYE = 1.65, RAD = 0.22;
 const walk = { x: 0, z: 0, yaw: Math.PI, pitch: 0 };
 const keys = {};
 function startWalk() {
-  walking = true; active = 'walk';
+  walking = true; active = 'walk'; document.body.classList.add('walking');
   ctlP.enabled = false; ctlO.enabled = false;
   const st = S.walk_start;
   walk.x = st[0]; walk.z = st[1]; walk.yaw = st[2]; walk.pitch = 0;
@@ -813,7 +826,7 @@ function startWalk() {
 }
 function stopWalk() {
   if (!walking) return;
-  walking = false; active = 'p';
+  walking = false; active = 'p'; document.body.classList.remove('walking');
   persp.rotation.order = 'XYZ';
   $('walkhint').style.display = 'none'; $('pad').style.display = 'none';
   setVis(gL, mode !== 'plan');
@@ -861,6 +874,25 @@ function stepWalk(dt) {
   persp.position.set(walk.x, EYE, walk.z);
   persp.rotation.set(walk.pitch, walk.yaw, 0);
 }
+
+/* ---------- paneles plegables (en móvil arrancan cerrados) ---------- */
+const isMobile = window.matchMedia('(max-width: 700px)').matches;
+function collapsible(panel, head, startCollapsed) {
+  const body = document.createElement('div');
+  Array.from(panel.children).filter(c => c !== head).forEach(c => body.appendChild(c));
+  panel.appendChild(body);
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'tg';
+  panel.insertBefore(btn, panel.firstChild);
+  const set = (c) => { body.style.display = c ? 'none' : ''; panel.classList.toggle('min', c); btn.textContent = c ? '▾' : '▴'; btn.setAttribute('aria-expanded', String(!c)); btn.title = c ? 'Mostrar panel' : 'Ocultar panel'; };
+  btn.addEventListener('click', () => set(body.style.display !== 'none'));
+  set(startCollapsed);
+}
+collapsible($('ui'), $('ui').firstElementChild, isMobile);
+const infoHead = $('info').querySelector('h2');
+collapsible($('info'), infoHead, isMobile);
+function updInfoHead() { infoHead.textContent = selected >= 0 ? S.rooms[selected].name + ' · ' + fmt(S.rooms[selected]._area) + ' m²' : 'Estancia'; }
+const _showRoom = showRoom; showRoom = (i) => { _showRoom(i); updInfoHead(); };
 
 /* ---------- bucle ---------- */
 const clock = new THREE.Clock();
